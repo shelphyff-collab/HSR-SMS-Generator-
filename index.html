@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>崩铁短信体生成器 (Pro Edition)</title>
+
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        hsr: {
+                            gold: '#C49845',
+                            teal: '#2A7E92',
+                            cyan: '#40b8bc',
+                            bg: '#f8fafc',
+                            panel: '#ffffff',
+                            border: '#e2e8f0'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Microsoft YaHei', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #f1f5f9; color: #334155; }
+
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+
+        const Icons = {
+            Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
+            Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
+            Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>,
+            Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>,
+            ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>,
+            ArrowLeft: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>,
+            ArrowUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>,
+            ArrowDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>,
+            Copy: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>,
+            Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>,
+            External: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>,
+            FileJson: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>,
+            RefreshCw: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>,
+            Clock: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        };
+
+
+        const BASE_CSS = `
+#workskin .chat-header p { margin: 0; }
+
+#workskin .chat-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: sans-serif;
+  margin-bottom: 30px;
+}
+
+#workskin .chat-header {
+  width: 95%;
+  max-width: 400px;
+  margin: 0 10px;
+  position: relative;
+  border-radius: 0px 33px 0px 0px;
+  border-bottom: rgb(174, 174, 174) solid 1px;
+  background-color: #D8DDDE;
+  box-shadow: -5px 5px 0px -1px #FFFFFF, -5px 5px 0px 0px #D8DDDE;
+}
+
+#workskin .chat-header::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 35px;
+  height: 35px;
+  background: url("https://i.postimg.cc/L5ygKs3d/bengtieliaotian.png") no-repeat;
+  background-size: 35px 35px;
+}
+
+#workskin .chat-title {
+  color: black;
+  font-size: 1.2em;
+  font-weight: bold;
+  position: relative;
+  padding-top: 10px;
+  padding-left: 20px;
+}
+
+#workskin .chat-subtitle {
+  color: gray;
+  font-size: .7em;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: 20px;
+}
+
+#workskin .chat-view {
+  background-color: #D8DDDE;
+  position: relative;
+  width: 95%;
+  max-width: 400px;
+  margin: 0 10px;
+  padding-top: 20px;
+  padding-bottom: 30px;
+  box-shadow: -4px -0px 0px 0px #FFFFFF, -5px 5px 0px -1px #FFFFFF, -5px 5px 0px 0px #D8DDDE;
+}
+
+#workskin .msg-right-container,
+#workskin .msg-left-container {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  flex-direction: column;
+  padding: 5px 5px;
+  min-height: 50px;
+}
+
+#workskin .msg-right-container {
+  align-items: flex-end;
+  margin-right: 48px;
+}
+#workskin .msg-left-container {
+  justify-content: left;
+  margin-left: 48px;
+}
+
+#workskin .msg-right-container::before,
+#workskin .msg-left-container::before {
+  margin-top: -8px;
+  content: '';
+  height: 45px;
+  width: 45px;
+  border-radius: 50%;
+  display: inline-block;
+  position: absolute;
+  background-color: rgb(58, 58, 58);
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+  border: 1px solid #aaa;
+  top: 0;
+}
+
+#workskin .msg-right-container::after,
+#workskin .msg-left-container::after {
+  position: absolute;
+  font-size: .9em;
+  color: rgb(112, 114, 119);
+  margin-top: -18px;
+  white-space: nowrap !important;
+  min-width: 50px;
+  z-index: 5;
+  line-height: 1.2;
+}
+
+#workskin .msg-right-container::before {
+  margin-right: -40px;
+  right: 5px;
+}
+#workskin .msg-right-container::after {
+  margin-right: 10px;
+  right: 0;
+}
+
+#workskin .msg-left-container::before {
+  margin-left: -40px;
+  left: 5px;
+}
+#workskin .msg-left-container::after {
+  margin-left: 10px;
+  left: 0;
+}
+
+#workskin .msg-right,
+#workskin .msg-left {
+  display: flex;
+  color: black;
+  width: fit-content;
+  position: relative;
+  max-width: 85%;
+  padding: 7px 14px;
+  margin: 3px 10px;
+  font-size: 0.95em;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+#workskin .msg-right {
+  border-top-right-radius: 0;
+  border-radius: 13px 0px 13px 13px;
+  background-color: rgb(212, 186, 138);
+  box-shadow: rgb(174, 174, 174) 2px 2px 0px;
+}
+
+#workskin .msg-left {
+  border-top-left-radius: 0;
+  border-radius: 0px 13px 13px 13px;
+  background-color: #EDEDED;
+  box-shadow: rgb(174, 174, 174) -1px 2px 0px;
+}
+
+#workskin .msg-left p,
+#workskin .msg-right p,
+#workskin .alert p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#workskin .alert {
+  color: #9C9C9D;
+  font-size: 0.8em;
+  text-align: center;
+  margin: 5px 30px 20px 40px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#workskin .alert-icon {
+  background: url("https://i.postimg.cc/d3zvyPqY/alert.png") no-repeat;
+  background-size: contain;
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+#workskin .timestamp {
+  text-align: center;
+  color: #888;
+  font-size: 0.7em;
+  margin: 10px 0;
+  font-weight: bold;
+}
+
+#workskin .sticker-img {
+  max-width: 120px;
+  max-height: 120px;
+  margin: 5px;
+}
+
+#workskin strong, #workskin b { font-weight: bold; color: inherit; }
+#workskin em, #workskin i { font-style: italic; color: inherit; }
+
+
+
+#workskin strong, #workskin b { font-weight: bold; color: inherit; }
+#workskin em, #workskin i { font-style: italic; color: inherit; }
+`;
+
+
+        const DEFAULT_CHARS = [
+            { id: 'p1', name: '开拓者', slug: 'trailblazer', avatar: 'https://i.postimg.cc/k4WnZ6yr/trash-can.png' },
+            { id: 'p2', name: '三月七', slug: 'march7th', avatar: 'https://i.postimg.cc/Gh02j15L/march.png' }
+        ];
+
+        const DEFAULT_CHATS = [
+            {
+                id: 1,
+                title: '星穹列车一家人',
+                subtitle: '3 members',
+                messages: [
+                    { id: 101, type: 'timestamp', content: 'Yesterday 11:42 PM' },
+                    { id: 102, type: 'text', side: 'right', charId: 'p1', content: '翻垃圾桶真开心啊。' },
+                    { id: 103, type: 'text', side: 'left', charId: 'p2', content: '......' },
+                ]
+            }
+        ];
+
+        function App() {
+            const [currentStep, setCurrentStep] = useState('intro');
+            const [cssConfirmed, setCssConfirmed] = useState(false);
+
+
+            const [characters, setCharacters] = useState(() => {
+                const saved = localStorage.getItem('hsr_pro_chars');
+                return saved ? JSON.parse(saved) : DEFAULT_CHARS;
+            });
+
+            const [chats, setChats] = useState(() => {
+                const saved = localStorage.getItem('hsr_pro_chats');
+                return saved ? JSON.parse(saved) : DEFAULT_CHATS;
+            });
+
+            const [activeChatId, setActiveChatId] = useState(() => {
+                const saved = localStorage.getItem('hsr_pro_active_chat');
+                return saved ? Number(saved) : 1;
+            });
+
+
+            useEffect(() => {
+                localStorage.setItem('hsr_pro_chars', JSON.stringify(characters));
+            }, [characters]);
+
+            useEffect(() => {
+                localStorage.setItem('hsr_pro_chats', JSON.stringify(chats));
+                // 自动更新 activeChatId 如果当前 active 没了
+                if (chats.length > 0 && !chats.find(c => c.id === activeChatId)) {
+                    setActiveChatId(chats[0].id);
+                }
+            }, [chats]);
+
+            useEffect(() => {
+                localStorage.setItem('hsr_pro_active_chat', activeChatId);
+            }, [activeChatId]);
+
+            const activeChat = chats.find(c => c.id === activeChatId) || chats[0] || { messages: [] };
+
+
+
+
+            const parseRichText = (text) => {
+                if (!text) return '';
+                // 替换 **bold** -> <b>, *italic* -> <i>
+                let html = text
+                    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                    .replace(/\*(.*?)\*/g, '<i>$1</i>');
+                return <span dangerouslySetInnerHTML={{__html: html}} />;
+            };
+
+
+            const parseRichTextForHtml = (text) => {
+                 if (!text) return '';
+                 return text
+                    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                    .replace(/\*(.*?)\*/g, '<i>$1</i>');
+            };
+
+            const generateDynamicCSS = () => {
+                let dynamicCss = `\n/* --- Character Dynamic Styles --- */\n`;
+                characters.forEach(char => {
+                    const safeSlug = char.slug.replace(/[^a-zA-Z0-9-_]/g, '');
+                    if (safeSlug) {
+                        dynamicCss += `
+#workskin .${safeSlug}::before {
+  background-image: url("${char.avatar}");
+}
+#workskin .${safeSlug}::after {
+  content: "${char.name}";
+}
+`;
+                    }
+                });
+                return BASE_CSS + dynamicCss;
+            };
+
+            const generateHTML = () => {
+                return chats.map(chat => {
+                    let html = `<div class="chat-container">\n`;
+                    html += `  <div class="chat-header">\n`;
+                    html += `    <div class="chat-title">${chat.title}</div>\n`;
+                    html += `    <div class="chat-subtitle">${chat.subtitle}</div>\n`;
+                    html += `  </div>\n\n`;
+                    html += `  <div class="chat-view">\n`;
+
+                    chat.messages.forEach(msg => {
+                        if (msg.type === 'alert') {
+                            html += `    <div class="alert"><span class="alert-icon"></span>${parseRichTextForHtml(msg.content)}</div>\n`;
+                        } else if (msg.type === 'timestamp') {
+                            html += `    <div class="timestamp">${msg.content}</div>\n`;
+                        } else {
+                            const char = characters.find(c => c.id === msg.charId);
+                            const slug = char ? char.slug.replace(/[^a-zA-Z0-9-_]/g, '') : 'unknown';
+                            const containerClass = msg.side === 'right' ? 'msg-right-container' : 'msg-left-container';
+                            const bubbleClass = msg.side === 'right' ? 'msg-right' : 'msg-left';
+
+                            html += `    <div class="${containerClass} ${slug}">\n`;
+
+                            if (msg.type === 'sticker') {
+                                html += `      <img src="${msg.content}" class="sticker-img" alt="sticker" />\n`;
+                            } else {
+                                html += `      <div class="${bubbleClass}">\n        ${parseRichTextForHtml(msg.content)}\n      </div>\n`;
+                            }
+                            html += `    </div>\n`;
+                        }
+                    });
+
+                    html += `  </div>\n`;
+                    html += `</div>`;
+                    return html;
+                }).join('\n\n<p>&nbsp;</p>\n\n');
+            };
+
+            // 导入导出功能
+            const exportProject = () => {
+                const data = { characters, chats };
+                const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `hsr_project_${new Date().toISOString().slice(0,10)}.json`;
+                a.click();
+            };
+
+            const importProject = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.characters && data.chats) {
+                            if(confirm('导入将覆盖当前所有数据，确定吗？')) {
+                                setCharacters(data.characters);
+                                setChats(data.chats);
+                                alert('项目导入成功！');
+                            }
+                        } else {
+                            alert('无效的项目文件格式。');
+                        }
+                    } catch (err) {
+                        alert('文件解析失败。');
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            const resetAll = () => {
+                if(confirm('警告：此操作将清空所有角色和对话数据，恢复到默认状态。确定要执行吗？')) {
+                    localStorage.removeItem('hsr_pro_chars');
+                    localStorage.removeItem('hsr_pro_chats');
+                    localStorage.removeItem('hsr_pro_active_chat');
+                    setCharacters(DEFAULT_CHARS);
+                    setChats(DEFAULT_CHATS);
+                    setActiveChatId(1);
+                    alert('已重置所有数据。');
+                }
+            };
+
+
+const StepIntro = () => {
+                // 已移除 showGuide 状态，说明书改为常驻显示
+
+                return (
+                    <div className="max-w-3xl mx-auto mt-10 p-10 bg-white rounded-xl shadow-lg border border-slate-200 text-center animate-fade-in relative overflow-hidden">
+                        {/* 顶部装饰条 */}
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-hsr-teal to-hsr-panel"></div>
+
+                        {/* 顶部工具栏 (保持不变) */}
+                        <div className="absolute top-4 right-4 flex gap-2">
+                             <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full text-xs flex items-center gap-1 transition-colors">
+                                <input type="file" className="hidden" accept=".json" onChange={importProject}/>
+                                <Icons.Upload/> 导入项目
+                             </label>
+                             <button onClick={exportProject} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full text-xs flex items-center gap-1 transition-colors">
+                                <Icons.FileJson/> 导出备份
+                             </button>
+                             <button onClick={resetAll} className="bg-red-50 hover:bg-red-100 text-red-500 px-3 py-1.5 rounded-full text-xs flex items-center gap-1 transition-colors" title="重置所有数据">
+                                <Icons.RefreshCw/> 重置
+                             </button>
+                        </div>
+
+                        <h2 className="text-4xl font-bold text-hsr-gold mb-2 tracking-wider mt-8">崩铁短信生成器</h2>
+
+                        {/* 开始创作按钮 (修复：使用强制金色背景，移除多余特效) */}
+                        <div className="flex justify-center mt-8 mb-10">
+                            <button
+                                onClick={() => setCurrentStep('characters')}
+                                className="bg-[#C49845] hover:bg-[#a37e3b] text-white font-bold py-3 px-16 rounded-full transition-colors flex items-center gap-2"
+                            >
+                                开始创作 <Icons.ArrowRight/>
+                            </button>
+                        </div>
+
+                        {/* 产品使用说明书 (常驻显示，无多余括号) */}
+                        <div className="text-left bg-slate-50 p-6 rounded-lg border border-slate-200 text-sm text-slate-600 leading-relaxed shadow-inner">
+                            <h3 className="font-bold text-lg text-hsr-teal mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+                                <Icons.Check/> 产品使用说明书
+                            </h3>
+
+                            <p className="mb-4 text-xs leading-6">
+                                本工具本质上是一个代码生成器，帮助0代码基础的小伙伴生成AO3中的作品皮肤（Workskin）和HTML语言代码。但需要注意的是，基于AO3的网站特性，有几项操作本生成器无法为您代劳，还需要一点点自己动手的部分。
+                            </p>
+
+                            <div className="space-y-4 text-xs leading-6">
+                                <div>
+                                    <p className="font-bold text-slate-800 mb-1">1. 作品皮肤与 HTML 是独立的</p>
+                                    <p>
+                                        AO3的作品皮肤和HTML文本写作是两个独立的模块。如果您还不知道什么是作品皮肤，可以参看
+                                        <a href="https://archiveofourown.org/admin_posts/1370" target="_blank" className="text-hsr-teal hover:underline font-bold mx-1">【官方解读文档（英文）】</a>
+                                        或者
+                                        <a href="http://xhslink.com/o/42hInjjzTSq" target="_blank" className="text-hsr-teal hover:underline font-bold mx-1">【我的小红书文档（中文）】</a>。
+                                        在设定好人物角色后，生成器会生成一个作品皮肤，您需要按照教程自行将这个作品皮肤发布在你的AO3皮肤中，再在发布作品时使用相应皮肤，并在作品编辑框中写入相应的HTML语言。
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <p className="font-bold text-slate-800 mb-1">2. 关于图床与图片链接</p>
+                                    <p>
+                                        AO3允许在作品中插入图片，但需要通过图片链接来实现。这涉及到外部图床。为帮助更多0代码基础的人使用本工具，在图片插入页内嵌了一个免费图床的链接。选择这个图床只是谷歌推荐的结果，并没有利益关系，也不代表生成器作者为图床背书。如果您有其他习惯的图床网站，也是可以使用的，并没有差别。表情和图片插入功能同理。
+                                    </p>
+                                </div>
+                            </div>
+
+                            <hr className="my-6 border-slate-200"/>
+
+                            {/* 致谢与免责声明 */}
+                            <div className="bg-slate-100 p-4 rounded border border-slate-200 text-xs text-slate-500 space-y-4">
+
+                                <div>
+                                    <span className="font-bold text-slate-600 block mb-1">免责声明 (Disclaimer)：</span>
+                                    <ul className="list-disc pl-4 space-y-1 opacity-90">
+                                        <li>本工具为粉丝自制（Fan-made），与米哈游官方无任何关联。UI设计及美术元素版权归原版权方所有。</li>
+                                        <li>本工具免费开源，仅供同人创作交流使用。严禁将本工具或本工具生成的代码用于任何商业用途或盈利行为。</li>
+                                        <li>本工具为纯前端应用，所有数据（角色配置、对话记录）仅存储于您的浏览器本地缓存中，开发者无法获取、查看或保存您的任何数据。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const StepCharacters = () => {
+                const addChar = () => setCharacters([...characters, { id: 'c'+Date.now(), name: '新角色', slug: 'new', avatar: '' }]);
+                const updateChar = (id, field, val) => setCharacters(characters.map(c => c.id === id ? { ...c, [field]: val } : c));
+                const removeChar = (id) => setCharacters(characters.filter(c => c.id !== id));
+
+                return (
+                    <div className="max-w-5xl mx-auto animate-fade-in relative">
+                        <div className="flex justify-between items-end mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-800">步骤 1: 设定角色</h2>
+                                <p className="text-slate-500 text-xs mt-1">配置角色头像与代号 (自动保存)</p>
+                            </div>
+                            <a href="https://postimages.org/" target="_blank" className="text-xs px-4 py-2 rounded-full border border-hsr-teal text-hsr-teal font-bold hover:bg-hsr-teal hover:text-white transition-all flex items-center gap-1">
+                                <Icons.External/> 前往图床上传
+                            </a>
+                        </div>
+
+                        <div className="space-y-4 mb-6">
+                            {characters.map(char => (
+                                <div key={char.id} className="glass-panel p-4 rounded-lg flex flex-col md:flex-row gap-4 items-start hover:border-hsr-gold transition-colors">
+                                    <div className="relative group w-16 h-16 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 flex-shrink-0 shadow-sm">
+                                        <img src={char.avatar || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                                        <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer text-white text-xs text-center leading-tight">
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if(file) {
+                                                    const reader = new FileReader();
+                                                    reader.onload = () => updateChar(char.id, 'avatar', reader.result);
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}/>
+                                            本地<br/>预览
+                                        </label>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow w-full">
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold mb-1 block">显示名称</label>
+                                            <input value={char.name} onChange={e => updateChar(char.id, 'name', e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-800 text-sm focus:border-hsr-teal focus:outline-none" placeholder="如: 三月七" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold mb-1 block">CSS代号 (英文)</label>
+                                            <input value={char.slug} onChange={e => updateChar(char.id, 'slug', e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-hsr-teal font-mono text-sm focus:border-hsr-teal focus:outline-none" placeholder="如: march7" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold mb-1 block">图床链接 (Direct Link) 请务必复制直接链接</label>
+                                            <input value={char.avatar} onChange={e => updateChar(char.id, 'avatar', e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-600 font-mono text-xs focus:border-hsr-teal focus:outline-none" placeholder="https://..." />
+                                        </div>
+                                    </div>
+                                    <button onClick={() => removeChar(char.id)} className="text-slate-400 hover:text-red-500 p-2"><Icons.Trash/></button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-between">
+                            <button onClick={addChar} className="px-5 py-2 border border-slate-300 text-slate-600 rounded hover:bg-slate-100 flex items-center gap-2 transition-colors"><Icons.Plus/> 添加角色</button>
+                            <button onClick={() => setCurrentStep('css')} className="bg-hsr-gold hover:bg-yellow-600 text-white px-8 py-2 rounded font-bold flex items-center gap-2 shadow-md transition-transform hover:scale-105">下一步 <Icons.ArrowRight/></button>
+                        </div>
+                    </div>
+                );
+            };
+
+            const StepCSS = () => {
+                const cssCode = generateDynamicCSS();
+                const downloadCSS = () => {
+                    const blob = new Blob([cssCode], {type: 'text/css'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'hsr_workskin.css';
+                    a.click();
+                };
+
+                return (
+                    <div className="max-w-4xl mx-auto animate-fade-in">
+                        <div className="flex items-center gap-2 mb-6">
+                            <button onClick={() => setCurrentStep('characters')} className="text-slate-500 hover:text-hsr-teal flex items-center gap-1 text-sm font-bold"><Icons.ArrowLeft/> 返回</button>
+                            <h2 className="text-2xl font-bold text-slate-800 ml-auto mr-auto">步骤 2: 保存 Workskin</h2>
+                        </div>
+                        <div className="glass-panel p-6 rounded-lg mb-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 className="text-lg font-bold text-hsr-gold">CSS 代码</h3>
+                                    <p className="text-xs text-slate-500">已自动修复头像位置。请复制到 AO3。</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(cssCode);
+                                            alert("CSS 代码已复制！");
+                                        }}
+                                        className="bg-white border border-slate-200 text-slate-700 hover:text-hsr-teal hover:border-hsr-teal text-xs px-4 py-2 rounded flex items-center gap-2 shadow-sm transition-colors"
+                                    >
+                                        <Icons.Copy/> 复制
+                                    </button>
+                                    <button onClick={downloadCSS} className="bg-white border border-slate-200 text-slate-700 hover:text-hsr-teal hover:border-hsr-teal text-xs px-4 py-2 rounded flex items-center gap-2 shadow-sm transition-colors">
+                                        <Icons.Download/> 下载 .css
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea readOnly value={cssCode} className="w-full h-64 bg-slate-50 text-slate-600 font-mono text-xs p-4 rounded border border-slate-200 resize-none outline-none mb-4 focus:border-hsr-gold focus:ring-1 focus:ring-hsr-gold" />
+                            <div className="flex items-start gap-3 bg-yellow-50 border border-yellow-200 p-3 rounded">
+                                <input type="checkbox" id="confirm" checked={cssConfirmed} onChange={e => setCssConfirmed(e.target.checked)} className="mt-1 w-4 h-4 accent-hsr-gold cursor-pointer" />
+                                <label htmlFor="confirm" className="text-sm text-slate-600 cursor-pointer">
+                                    <span className="font-bold text-hsr-gold block">我确认已保存代码</span>
+                                    我已将代码复制到 AO3，或已下载备份。
+                                </label>
+                            </div>
+                        </div>
+                        <div className="flex justify-center">
+                            <button onClick={() => setCurrentStep('editor')} disabled={!cssConfirmed} className={`px-10 py-3 rounded font-bold flex items-center gap-2 transition ${cssConfirmed ? 'bg-green-600 hover:bg-green-500 text-white transform hover:scale-105 shadow-md' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+                                {cssConfirmed ? '确认无误，进入编辑器' : '请先确认保存 CSS'} <Icons.ArrowRight/>
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+          const StepEditor = () => {
+                const [inputText, setInputText] = useState('');
+                const [selectedCharId, setSelectedCharId] = useState(characters[0]?.id);
+                const [msgType, setMsgType] = useState('text');
+                const [activeTab, setActiveTab] = useState('preview');
+
+                const addMsg = (side) => {
+                    if(!inputText && msgType !== 'sticker') return;
+                    const newMsg = { id: Date.now(), type: msgType, side, charId: selectedCharId, content: inputText };
+                    setChats(chats.map(c => c.id === activeChatId ? { ...c, messages: [...c.messages, newMsg] } : c));
+                    setInputText('');
+
+                    // 自动滚动到底部 (可选体验优化)
+                    setTimeout(() => {
+                        const list = document.getElementById('msg-list-container');
+                        if(list) list.scrollTop = list.scrollHeight;
+                    }, 50);
+                };
+
+                const delMsg = (msgId) => {
+                    setChats(chats.map(c => c.id === activeChatId ? { ...c, messages: c.messages.filter(m => m.id !== msgId) } : c));
+                };
+
+                const moveMsg = (msgId, direction) => {
+                    const chat = chats.find(c => c.id === activeChatId);
+                    if (!chat) return;
+                    const msgs = [...chat.messages];
+                    const idx = msgs.findIndex(m => m.id === msgId);
+                    if (idx === -1) return;
+
+                    // 正序逻辑：-1 是向上（与前一个交换），1 是向下（与后一个交换）
+                    if (direction === -1 && idx > 0) {
+                        [msgs[idx], msgs[idx-1]] = [msgs[idx-1], msgs[idx]];
+                    } else if (direction === 1 && idx < msgs.length - 1) {
+                        [msgs[idx], msgs[idx+1]] = [msgs[idx+1], msgs[idx]];
+                    }
+
+                    setChats(chats.map(c => c.id === activeChatId ? { ...c, messages: msgs } : c));
+                };
+
+                const addChat = () => {
+                    const newId = Date.now();
+                    setChats([...chats, { id: newId, title: '新会话', subtitle: '私聊', messages: [] }]);
+                    setActiveChatId(newId);
+                };
+                const delChat = () => {
+                    if(chats.length <= 1) return alert('至少保留一个会话');
+                    const rem = chats.filter(c => c.id !== activeChatId);
+                    setChats(rem);
+                    setActiveChatId(rem[0].id);
+                };
+
+                return (
+                    <div className="h-[calc(100vh-120px)] flex flex-col md:flex-row gap-6 animate-fade-in">
+                        {/* 左侧控制台 */}
+                        <div className="w-full md:w-1/3 flex flex-col gap-4 overflow-y-auto pr-1">
+                            <div className="flex items-center justify-between mb-2">
+                                <button onClick={() => setCurrentStep('css')} className="text-slate-500 text-xs hover:text-hsr-teal font-bold flex items-center gap-1"><Icons.ArrowLeft/> 查看 CSS</button>
+                                <div className="flex gap-2">
+                                    <button onClick={exportProject} className="text-slate-500 hover:text-hsr-teal" title="保存项目"><Icons.FileJson/></button>
+                                    <button onClick={resetAll} className="text-slate-500 hover:text-red-500" title="清空重置"><Icons.RefreshCw/></button>
+                                </div>
+                            </div>
+
+                            {/* 会话切换 */}
+                            <div className="glass-panel p-4 rounded-lg">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-xs font-bold text-hsr-gold uppercase tracking-widest">会话管理</span>
+                                    <div className="flex gap-2">
+                                        <button onClick={addChat} className="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1 rounded hover:bg-white hover:text-hsr-teal transition-colors"><Icons.Plus/></button>
+                                        <button onClick={delChat} className="text-xs bg-red-50 text-red-400 border border-red-100 px-2 py-1 rounded hover:bg-red-100 transition-colors"><Icons.Trash/></button>
+                                    </div>
+                                </div>
+                                <select value={activeChatId} onChange={e => setActiveChatId(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-300 text-sm p-2 rounded text-slate-700 focus:border-hsr-teal outline-none mb-3">
+                                    {chats.map((c, i) => <option key={c.id} value={c.id}>{i+1}. {c.title} ({c.messages.length})</option>)}
+                                </select>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input value={activeChat.title} onChange={e => setChats(chats.map(c => c.id === activeChatId ? { ...c, title: e.target.value } : c))} className="bg-slate-50 border border-slate-300 text-xs p-2 rounded text-slate-700 focus:border-hsr-teal outline-none" placeholder="标题"/>
+                                    <input value={activeChat.subtitle} onChange={e => setChats(chats.map(c => c.id === activeChatId ? { ...c, subtitle: e.target.value } : c))} className="bg-slate-50 border border-slate-300 text-xs p-2 rounded text-slate-700 focus:border-hsr-teal outline-none" placeholder="副标题"/>
+                                </div>
+                            </div>
+
+                            {/* 消息发送与列表区域 */}
+                            <div className="glass-panel p-4 rounded-lg flex-1 flex flex-col gap-3 min-h-[400px]">
+                                {/* 类型切换按钮 */}
+                                <div className="flex bg-slate-100 p-1 rounded border border-slate-200 shrink-0">
+                                    {['text', 'sticker', 'alert', 'timestamp'].map(t => (
+                                        <button key={t} onClick={() => setMsgType(t)} className={`flex-1 text-xs py-1.5 rounded capitalize transition-all ${msgType === t ? 'bg-white text-hsr-teal shadow font-bold' : 'text-slate-500 hover:text-slate-700'}`}>
+                                            {t === 'text' ? '文本' : t === 'sticker' ? '图片' : t === 'alert' ? '警告' : '时间'}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* 角色选择 */}
+                                {(msgType !== 'alert' && msgType !== 'timestamp') && (
+                                    <select value={selectedCharId} onChange={e => setSelectedCharId(e.target.value)} className="bg-slate-50 text-slate-700 text-sm border border-slate-300 rounded p-2 focus:border-hsr-teal outline-none shrink-0">
+                                        {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                )}
+
+                                {/* 文本输入框 (高度缩小至 h-24，约3-4行) */}
+                                <div className="relative h-24 shrink-0">
+                                    <textarea
+                                        value={inputText} onChange={e => setInputText(e.target.value)}
+                                        className="w-full h-full bg-slate-50 border border-slate-300 rounded p-3 text-sm text-slate-700 resize-none focus:border-hsr-teal outline-none"
+                                        placeholder={msgType === 'sticker' ? '输入图片URL...' : msgType === 'timestamp' ? '如: Yesterday 10:00 PM' : '支持 **粗体** 和 *斜体*...'}
+                                        onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addMsg('right'); }}}
+                                    />
+                                    {msgType === 'text' && <div className="absolute bottom-2 right-2 text-[10px] text-slate-400">支持 **bold** *italic*</div>}
+                                </div>
+
+                                {/* 发送按钮 */}
+                                <div className="grid grid-cols-2 gap-3 shrink-0">
+                                    <button onClick={() => addMsg('left')} disabled={msgType === 'alert' || msgType === 'timestamp'} className="bg-slate-200 text-slate-600 py-2 rounded text-xs hover:bg-slate-300 border border-slate-300 font-bold transition-colors disabled:opacity-50">左侧 (接收)</button>
+                                    <button onClick={() => addMsg('right')} className="bg-hsr-gold text-white py-2 rounded text-xs hover:bg-yellow-600 font-bold shadow-sm transition-colors">
+                                        {(msgType === 'alert' || msgType === 'timestamp') ? '添加' : '右侧 (发送)'}
+                                    </button>
+                                </div>
+
+                                {/* 消息列表 (占据剩余空间，正序排列) */}
+                                <div id="msg-list-container" className="mt-2 border-t border-slate-200 pt-2 flex-1 overflow-y-auto bg-slate-50/50 rounded p-2 min-h-0">
+                                    <div className="space-y-1 pr-1">
+                                        {/* 直接映射，不反转，保持正序 (Newest at bottom) */}
+                                        {activeChat.messages.map((m, idx) => (
+                                            <div key={m.id} className="flex justify-between items-center bg-white border border-slate-200 p-2 rounded text-xs group hover:border-hsr-teal transition-colors shadow-sm">
+                                                <div className="truncate flex-1 mr-2 text-slate-600">
+                                                    {m.type==='alert' ? <span className="text-red-500">[警]</span> : m.type==='timestamp' ? <span className="text-gray-400">[时]</span> : <span className="text-hsr-gold font-bold">[{characters.find(c=>c.id===m.charId)?.name}]</span>} {parseRichText(m.content)}
+                                                </div>
+                                                <div className="flex gap-1 items-center">
+                                                    <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {/* 正序调整：上移是 idx-1，下移是 idx+1 */}
+                                                        <button onClick={() => moveMsg(m.id, -1)} disabled={idx === 0} className="text-slate-400 hover:text-hsr-teal disabled:opacity-20"><Icons.ArrowUp/></button>
+                                                        <button onClick={() => moveMsg(m.id, 1)} disabled={idx === activeChat.messages.length - 1} className="text-slate-400 hover:text-hsr-teal disabled:opacity-20"><Icons.ArrowDown/></button>
+                                                    </div>
+                                                    <button onClick={() => delMsg(m.id)} className="text-slate-400 hover:text-red-500 ml-1"><Icons.Trash/></button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {activeChat.messages.length === 0 && <div className="text-center text-slate-400 py-4">暂无消息...</div>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                       {/* 右侧预览与导出 (保持不变) */}
+                        <div className="w-full md:w-2/3 glass-panel rounded-xl shadow-lg flex flex-col overflow-hidden bg-white">
+                            <div className="flex border-b border-slate-200 bg-slate-50">
+                                <button onClick={() => setActiveTab('preview')} className={`flex-1 py-3 text-sm font-bold transition-colors ${activeTab === 'preview' ? 'text-hsr-teal border-b-2 border-hsr-teal bg-white' : 'text-slate-500 hover:text-slate-700'}`}>实时预览</button>
+                                <button onClick={() => setActiveTab('code')} className={`flex-1 py-3 text-sm font-bold transition-colors ${activeTab === 'code' ? 'text-hsr-teal border-b-2 border-hsr-teal bg-white' : 'text-slate-500 hover:text-slate-700'}`}>HTML 代码</button>
+                            </div>
+
+                            <div className="flex-1 overflow-hidden bg-white relative">
+                                {activeTab === 'preview' && (
+                                    <div className="w-full h-full overflow-y-auto p-4 flex flex-col items-center">
+                                        <style>{generateDynamicCSS()}</style>
+                                        <div id="workskin" className="w-full pb-20" dangerouslySetInnerHTML={{ __html: generateHTML() }} />
+                                    </div>
+                                )}
+                                {activeTab === 'code' && (
+                                    <div className="w-full h-full flex flex-col">
+                                        <textarea readOnly value={generateHTML()} className="flex-1 bg-slate-900 text-green-400 font-mono text-xs p-4 resize-none outline-none" />
+                                        <div className="p-3 bg-slate-50 border-t border-slate-200 text-center">
+                                            <button onClick={() => navigator.clipboard.writeText(generateHTML())} className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded text-sm font-bold flex items-center justify-center gap-2 mx-auto shadow-md transition-transform hover:scale-105"><Icons.Copy/> 复制全部 HTML</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+           
+            return (
+                <div className="min-h-screen p-4 md:p-6 max-w-7xl mx-auto font-sans">
+                    {/* 头部导航 */}
+                    <header className="flex justify-between items-center mb-8 pb-4 border-b border-slate-200">
+                        <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <span className="text-hsr-gold text-2xl">✦</span>
+                            <span className="tracking-wide">HSR SMS <span className="text-hsr-teal font-normal text-sm">PRO</span></span>
+                        </h1>
+                        {currentStep !== 'intro' && (
+                            <div className="flex gap-2 text-xs bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                                <span className={`px-3 py-1 rounded transition-colors ${currentStep === 'characters' ? 'bg-hsr-teal text-white shadow-sm' : 'text-slate-500'}`}>1.角色</span>
+                                <span className="text-slate-300 py-1">&rarr;</span>
+                                <span className={`px-3 py-1 rounded transition-colors ${currentStep === 'css' ? 'bg-hsr-teal text-white shadow-sm' : 'text-slate-500'}`}>2.CSS</span>
+                                <span className="text-slate-300 py-1">&rarr;</span>
+                                <span className={`px-3 py-1 rounded transition-colors ${currentStep === 'editor' ? 'bg-hsr-teal text-white shadow-sm' : 'text-slate-500'}`}>3.剧情</span>
+                            </div>
+                        )}
+                    </header>
+
+                    <main>
+                        {currentStep === 'intro' && <StepIntro />}
+                        {currentStep === 'characters' && <StepCharacters />}
+                        {currentStep === 'css' && <StepCSS />}
+                        {currentStep === 'editor' && <StepEditor />}
+                    </main>
+                </div>
+            );
+        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
